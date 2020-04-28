@@ -42,10 +42,10 @@ int next_process( struct process *proc, int N, int policy){
 
 	else if( policy == RR ){
 		//run complete time quantum
-		if( running != -1 && (rr_time_cumulate % RR_TIMEQUANTUM) != 0 ){
-			if( rr_time_cumulate >= RR_TIMEQUANTUM ) rr_time_cumulate %= RR_TIMEQUANTUM;
-			return running;
-		}
+		//if( running != -1 && (rr_time_cumulate % RR_TIMEQUANTUM) != 0 ){
+		//	if( rr_time_cumulate >= RR_TIMEQUANTUM ) rr_time_cumulate %= RR_TIMEQUANTUM;
+		//	return running;
+		//}
 
 		if( running == -1 ){ // pick new one from last
 			for( int i = last_run+1; i < N+last_run+1 ; i++)
@@ -93,13 +93,15 @@ int scheduling( struct process *proc, int N, int policy){
 	if( proc_setscheduler(getpid(), SCHED_OTHER) < 0 ) return -1;
 
 	while( finish_cnt < N){
+
 		//if( ntime % 100 == 0 ){
 		//	printf("ntime:%d running:%d last_run:%d\n", ntime, running, last_run);
 		//	_print_proc( proc, N); //for debug
 		//	fflush(stdout);
 		//}
+
 			
-		//printf("rr_time_cumulate: %d\n", rr_time_cumulate);
+		int new_come = 0;
 
 		//if someone running
 		if( running != -1 && proc[running].t_exec == 0 ){
@@ -121,23 +123,42 @@ int scheduling( struct process *proc, int N, int policy){
 		for( int i = 0 ; i < N ; i++){
 			if( proc[i].t_exec == 0 || proc[i].pid != -1 ) continue;
 			if( proc[i].t_ready == ntime ){
+				new_come = 1;
 				proc[i].pid = proc_exec(proc[i]);
 				proc_setscheduler(proc[i].pid, SCHED_IDLE);
 			}
 		}
 
-		//select one from algorithm, wake up next
-		int next = next_process( proc, N, policy);
-		//next == -1 : no job ready / all done
-		if( next != -1 ){ 
-			if( running != next ){
-				proc_setscheduler(proc[next].pid, SCHED_OTHER); //wakeup
-				proc_setscheduler(proc[running].pid, SCHED_IDLE); //block
+		if( policy != RR && new_come == 1 ){
+			//select one from algorithm, wake up next
+			int next = next_process( proc, N, policy);
+			//next == -1 : no job ready / all done
+			if( next != -1 ){ 
+				if( running != next ){
+					proc_setscheduler(proc[next].pid, SCHED_OTHER); //wakeup
+					proc_setscheduler(proc[running].pid, SCHED_IDLE); //block
 
-				if( running != -1 ) last_run = running;
-				running = next;
-				rr_time_cumulate = 0;
+					if( running != -1 ) last_run = running;
+					running = next;
+					rr_time_cumulate = 0;
+				}
 			}
+		}
+		else if( running == -1 ||  rr_time_cumulate%RR_TIMEQUANTUM == 0 ){
+			//select one from algorithm, wake up next
+			int next = next_process( proc, N, policy);
+			//next == -1 : no job ready / all done
+			if( next != -1 ){ 
+				if( running != next ){
+					proc_setscheduler(proc[next].pid, SCHED_OTHER); //wakeup
+					proc_setscheduler(proc[running].pid, SCHED_IDLE); //block
+
+					if( running != -1 ) last_run = running;
+					running = next;
+					rr_time_cumulate = 0;
+				}
+			}
+
 		}
 
 		UNIT_T(1); //scheduler also ellipse a time unit
