@@ -942,5 +942,6 @@ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
 			  unsigned mask, struct statx __user *buffer);
 
 asmlinkage void sys_print_kernel(char *dmesg);
+asmlinkage void sys_my_gettime(struct timespec *t);
 
 #endif

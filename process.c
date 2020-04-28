@@ -48,19 +48,21 @@ int proc_exec(struct process proc){
 		struct timespec start_time, end_time;
 		char to_dmesg[256];
 
-		if( clock_gettime( CLOCK_REALTIME, &start_time ) == -1 ){
-			char err[256];
-			sprintf( err, "name:%s pid:%d clock gettime, start time", proc.name, proc.pid);
-			perror(err); exit(1);
-    	}
+		//if( clock_gettime( CLOCK_REALTIME, &start_time ) == -1 ){
+		//	char err[256];
+		//	sprintf( err, "name:%s pid:%d clock gettime, start time", proc.name, proc.pid);
+		//	perror(err); exit(1);
+    		//}
 
+		syscall(334, &start_time);
 		UNIT_T(proc.t_exec);
+		syscall(334, &end_time);
 
-		if( clock_gettime( CLOCK_REALTIME, &end_time ) == -1 ){
-			char err[256];
-			sprintf( err, "name:%s pid:%d clock gettime, end time", proc.name, proc.pid);
-			perror(err); exit(1);
-    	}
+		//if( clock_gettime( CLOCK_REALTIME, &end_time ) == -1 ){
+		//	char err[256];
+		//	sprintf( err, "name:%s pid:%d clock gettime, end time", proc.name, proc.pid);
+		//	perror(err); exit(1);
+    		//}
 
 		sprintf( to_dmesg, "[Project1] %d %lu.%09lu %lu.%09lu\n", getpid(), start_time.tv_sec, start_time.tv_nsec, end_time.tv_sec, end_time.tv_nsec);
 		syscall(333, to_dmesg);
