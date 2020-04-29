@@ -42,10 +42,10 @@ int next_process( struct process *proc, int N, int policy){
 
 	else if( policy == RR ){
 		//run complete time quantum
-		//if( running != -1 && (rr_time_cumulate % RR_TIMEQUANTUM) != 0 ){
-		//	if( rr_time_cumulate >= RR_TIMEQUANTUM ) rr_time_cumulate %= RR_TIMEQUANTUM;
-		//	return running;
-		//}
+		if( running != -1 && (rr_time_cumulate % RR_TIMEQUANTUM) != 0 ){
+			if( rr_time_cumulate >= RR_TIMEQUANTUM ) rr_time_cumulate %= RR_TIMEQUANTUM;
+			return running;
+		}
 
 		if( running == -1 ){ // pick new one from last
 			for( int i = last_run+1; i < N+last_run+1 ; i++)

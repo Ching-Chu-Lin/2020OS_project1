@@ -1,9 +1,16 @@
-for file in OS_PJ1_Test/*
+for file in ../OS_PJ1_Test/*
 do
-	var=`echo $file | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}'`
-	var=${var}_stdout.txt
+	echo "sudo dmesg -c"
+	sudo dmesg -c
 
-	echo "sudo ./main < $file > outputs/$var"
-	sudo ./main.out < $file > output/$var
+	var=`echo $file | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}'`
+	var1=${var}_stdout.txt
+	var2=${var}_dmesg.txt
+
+	echo "sudo ./main.out < $file > output/$var1"
+	sudo ./main.out < $file > output/$var1
+
+	echo "dmesg | grep Project1 > output/$var2"
+	dmesg | grep Project1 > output/$var2
 
 done
