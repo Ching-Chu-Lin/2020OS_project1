@@ -9,7 +9,6 @@
 #include <sys/wait.h>
 
 void _print_proc( struct process *proc, int N){
-	printf("---print proc---\n");
 	for( int i = 0 ; i < N ; i++)
 		printf("%s %d %d %d\n", proc[i].name, proc[i].t_ready, proc[i].t_exec, proc[i].pid);
 	return;
@@ -26,6 +25,7 @@ static int last_run = -1;
 static int running = -1; // Index of running process. -1 if no process running
 static int finish_cnt = 0;
 static int rr_time_cumulate = 0;
+static int RR_query[20];
 
 int next_process( struct process *proc, int N, int policy){
 	/* return the index of next process */
@@ -41,23 +41,17 @@ int next_process( struct process *proc, int N, int policy){
 	}
 
 	else if( policy == RR ){
-		//run complete time quantum
-		if( running != -1 && (rr_time_cumulate % RR_TIMEQUANTUM) != 0 ){
-			if( rr_time_cumulate >= RR_TIMEQUANTUM ) rr_time_cumulate %= RR_TIMEQUANTUM;
-			return running;
+		if( running != -1 ) RR_query[running] = ntime;
+		
+		int min_query_index = -1;
+		for( int i = 0 ; i < N ; i++){
+			if( proc[i].pid == -1 ) continue;
+			
+			if( min_query_index == -1 ) min_query_index = i;
+			else if( RR_query[i] < RR_query[min_query_index] ) min_query_index = i;
 		}
-
-		if( running == -1 ){ // pick new one from last
-			for( int i = last_run+1; i < N+last_run+1 ; i++)
-				if( proc[(i%N)].pid != -1 ) return (i%N); 
-		}
-		else{ //time up pause
-			for( int i = running+1 ; i < N+running+1 ; i++){
-				if( (i%N) == running ) continue;
-				if( proc[(i%N)].pid != -1 ) return (i%N); 
-			}
-		}
-		return -1; //no next, all job done
+		return min_query_index;
+		
 	}
 
 	else{ //SJF and PSJF
@@ -89,13 +83,19 @@ int scheduling( struct process *proc, int N, int policy){
 
 	qsort( proc, N, sizeof( struct process), cmp);
 
+	//initialize
+	for( int i = 0 ; i < N ; i++)
+		RR_query[i] = -1;
+
 	if( proc_assign_cpu(getpid(), 0) < 0 ) return -1; //set scehuler to cpu 0
 	if( proc_setscheduler(getpid(), SCHED_OTHER) < 0 ) return -1;
 
 	while( finish_cnt < N){
 
 		//if( ntime % 100 == 0 ){
+		//	printf("--------------------------------\n"
 		//	printf("ntime:%d running:%d last_run:%d\n", ntime, running, last_run);
+		//	if( running != -1 ) printf("RR_query from:%d\n", RR_query[running]);
 		//	_print_proc( proc, N); //for debug
 		//	fflush(stdout);
 		//}
@@ -110,6 +110,7 @@ int scheduling( struct process *proc, int N, int policy){
 			//done
 			printf("%s %d\n", proc[running].name, proc[running].pid);
 			proc[running].pid = -1;
+			RR_query[running] = -1;
 
 			last_run = running;
 			running = -1;
@@ -126,6 +127,8 @@ int scheduling( struct process *proc, int N, int policy){
 				new_come = 1;
 				proc[i].pid = proc_exec(proc[i]);
 				proc_setscheduler(proc[i].pid, SCHED_IDLE);
+
+				RR_query[i] = ntime;
 			}
 		}
 
@@ -137,6 +140,7 @@ int scheduling( struct process *proc, int N, int policy){
 				if( running != next ){
 					proc_setscheduler(proc[next].pid, SCHED_OTHER); //wakeup
 					proc_setscheduler(proc[running].pid, SCHED_IDLE); //block
+					RR_query[running] = ntime;
 
 					if( running != -1 ) last_run = running;
 					running = next;
