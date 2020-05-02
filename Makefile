@@ -1,4 +1,4 @@
-CFLAG = -DDEBUG -Wall -std=c99
+CFLAG = -Wall -std=c99
 
 main: main.o scheduler.o process.o
 	gcc $(CFLAG) main.o scheduler.o process.o -o main.out

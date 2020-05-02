@@ -8,9 +8,25 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+//var managed by scheduler initializing
+static int ntime = 0; // Current time in unit
+static int last_run = -1;
+static int running = -1; // Index of running process. -1 if no process running
+static int finish_cnt = 0;
+static int rr_time_cumulate = 0;
+static int RR_query[20];
+
 void _print_proc( struct process *proc, int N){
 	for( int i = 0 ; i < N ; i++)
 		printf("%s %d %d %d\n", proc[i].name, proc[i].t_ready, proc[i].t_exec, proc[i].pid);
+	return;
+}
+
+void _print_RR_query( int N){
+	printf("RR_query: ");
+	for( int i = 0 ; i < N ; i++)
+		printf("%d ", RR_query[i]);
+	printf("\n");
 	return;
 }
 
@@ -19,13 +35,6 @@ int cmp( const void * a, const void *b){
 }
 
 
-//var managed by scheduler initializing
-static int ntime = 0; // Current time in unit
-static int last_run = -1;
-static int running = -1; // Index of running process. -1 if no process running
-static int finish_cnt = 0;
-static int rr_time_cumulate = 0;
-static int RR_query[20];
 
 int next_process( struct process *proc, int N, int policy){
 	/* return the index of next process */
@@ -91,15 +100,16 @@ int scheduling( struct process *proc, int N, int policy){
 	if( proc_setscheduler(getpid(), SCHED_OTHER) < 0 ) return -1;
 
 	while( finish_cnt < N){
-
-		//if( ntime % 100 == 0 ){
-		//	printf("--------------------------------\n"
-		//	printf("ntime:%d running:%d last_run:%d\n", ntime, running, last_run);
-		//	if( running != -1 ) printf("RR_query from:%d\n", RR_query[running]);
-		//	_print_proc( proc, N); //for debug
-		//	fflush(stdout);
-		//}
-
+#ifdef DDEBUG
+		if( ntime % 100 == 0 ){
+			printf("--------------------------------\n");
+			printf("ntime:%d running:%d last_run:%d\n", ntime, running, last_run);
+			if( running != -1 ) printf("RR_query from:%d\n", RR_query[running]);
+			_print_proc( proc, N); //for debug
+			_print_RR_query( N);
+			fflush(stdout);
+		}
+#endif
 			
 		int new_come = 0;
 
@@ -132,6 +142,8 @@ int scheduling( struct process *proc, int N, int policy){
 			}
 		}
 
+
+
 		if( policy != RR && new_come == 1 ){
 			//select one from algorithm, wake up next
 			int next = next_process( proc, N, policy);
@@ -140,7 +152,6 @@ int scheduling( struct process *proc, int N, int policy){
 				if( running != next ){
 					proc_setscheduler(proc[next].pid, SCHED_OTHER); //wakeup
 					proc_setscheduler(proc[running].pid, SCHED_IDLE); //block
-					RR_query[running] = ntime;
 
 					if( running != -1 ) last_run = running;
 					running = next;
